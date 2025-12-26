@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Form, Button, Card, Alert, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import API from "../api/adminAPI";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,7 +16,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://127.0.0.1:6001/api/admin/login", {
+      const res = await API.post("/login", {
         email,
         password,
       });
