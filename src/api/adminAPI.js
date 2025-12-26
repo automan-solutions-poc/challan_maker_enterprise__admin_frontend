@@ -1,9 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  // baseURL: "http://127.0.0.1:6001/api/admin",
-  baseURL: "https://api.automan.solutions/api/admin",
-
+  baseURL: process.env.REACT_APP_API_URL,
 });
 
 API.interceptors.request.use((config) => {
