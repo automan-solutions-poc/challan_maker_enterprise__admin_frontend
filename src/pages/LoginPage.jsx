@@ -14,6 +14,7 @@ import {
 import { Shield, Mail, LogIn, Lock, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { useTheme } from "../ThemeContext";
 import "./LoginPage.css";
+import { identifyUser, trackEvent, Events } from "../analytics";
 
 export default function LoginPage() {
   const { theme, toggleTheme } = useTheme();
@@ -33,9 +34,18 @@ export default function LoginPage() {
       const res = await API.post("/login", { email, password });
       localStorage.setItem("admin_token", res.data.token);
       localStorage.setItem("admin_user", JSON.stringify(res.data.admin));
+      identifyUser(res.data.admin?.email, {
+        user_id: res.data.admin?.id,
+        role: res.data.admin?.role || "admin",
+        name: res.data.admin?.full_name,
+      });
+      trackEvent(Events.LOGIN_SUCCESS, { role: res.data.admin?.role || "admin" });
       navigate("/admin/dashboard");
     } catch (err) {
       setError(err.response?.data?.error || "Login failed");
+      trackEvent(Events.LOGIN_FAILED, {
+        reason: err.response?.data?.error || "login_failed",
+      });
     } finally {
       setLoading(false);
     }

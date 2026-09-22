@@ -13,9 +13,11 @@ import {
   Shield,
   PanelLeftClose,
   PanelLeftOpen,
+  FileText,
 } from "lucide-react";
 import { useTheme } from "../ThemeContext";
 import "./AdminLayout.css";
+import { resetAnalytics, trackEvent, Events } from "../analytics";
 
 export default function AdminLayout() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -25,6 +27,8 @@ export default function AdminLayout() {
   const admin = JSON.parse(localStorage.getItem("admin_user") || "null");
 
   const logout = () => {
+    trackEvent(Events.LOGOUT, { role: admin?.role || "admin" });
+    resetAnalytics();
     localStorage.removeItem("admin_token");
     localStorage.removeItem("admin_user");
     navigate("/login");
@@ -37,6 +41,8 @@ export default function AdminLayout() {
       <button className="sidebar-toggle" onClick={toggleSidebar}>
         <Menu size={20} />
       </button>
+
+      {isSidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
 
       <aside
         className={`admin-sidebar ${isSidebarOpen ? "is-open" : ""} ${isSidebarCollapsed ? "is-collapsed" : ""}`}
@@ -77,6 +83,9 @@ export default function AdminLayout() {
             </Nav.Link>
             <Nav.Link as={NavLink} to="/admin/subscriptions" className="admin-link" onClick={() => setSidebarOpen(false)}>
               <CreditCard size={18} className="sidebar-icon" /><span className="sidebar-text">Subscriptions</span>
+            </Nav.Link>
+            <Nav.Link as={NavLink} to="/admin/challans" className="admin-link" onClick={() => setSidebarOpen(false)}>
+              <FileText size={18} className="sidebar-icon" /><span className="sidebar-text">Challans</span>
             </Nav.Link>
           </Nav>
 

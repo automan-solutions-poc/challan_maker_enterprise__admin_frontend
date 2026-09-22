@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import TenantsPage from "./pages/TenantsPage";
 import TenantUsersPage from "./pages/TenantUsersPage";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
+import AdminChallansPage from "./pages/AdminChallansPage";
 import AdminLayout from "./components/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="tenants" element={<TenantsPage />} />
         <Route path="tenant-users" element={<TenantUsersPage />} />
         <Route path="subscriptions" element={<SubscriptionsPage />} />
+        <Route path="challans" element={<AdminChallansPage />} />
       </Route>
 
       <Route path="*" element={<LoginPage />} />

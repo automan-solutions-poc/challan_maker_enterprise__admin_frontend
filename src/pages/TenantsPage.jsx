@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import API from "../api/adminAPI";
 import { Button, Modal, Form, Table, Alert, Card } from "react-bootstrap";
-import { Plus, Building2 } from "lucide-react";
+import { Plus, Building2, Mail } from "lucide-react";
 import Loader from "../components/Loader";
+import { trackEvent, Events } from "../analytics";
 
 const toDateInputValue = (date) => {
   if (!date) return "";
@@ -15,10 +16,12 @@ export default function AdminTenantsPage() {
   const [editingTenant, setEditingTenant] = useState(null);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
+  const [resendingId, setResendingId] = useState(null);
 
   const emptyForm = {
     name: "",
     email: "",
+    outbound_email: "",
     theme_color: "#114e9e",
     plan: "Free",
     subscription_start: "",
@@ -51,6 +54,7 @@ export default function AdminTenantsPage() {
       formData.append("data", JSON.stringify({
         name: form.name,
         email: form.email,
+        outbound_email: form.outbound_email || null,
         theme_color: form.theme_color,
         plan: form.plan,
         subscription_start: form.subscription_start || null,
@@ -64,12 +68,21 @@ export default function AdminTenantsPage() {
         await API.put(`/tenants/${editingTenant.id}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+        trackEvent(Events.TENANT_UPDATED, { tenant_id: editingTenant.id });
         setMsg("Tenant updated successfully");
       } else {
-        await API.post("/tenants", formData, {
+        const res = await API.post("/tenants", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-        setMsg("Tenant created successfully");
+        trackEvent(Events.TENANT_CREATED, {
+          invite_sent: Boolean(res.data.invite_sent),
+          plan: form.plan,
+        });
+        setMsg(
+          res.data.invite_sent
+            ? "Tenant created. A setup email was sent to the tenant contact."
+            : "Tenant created successfully"
+        );
       }
 
       setShowModal(false);
@@ -87,6 +100,7 @@ export default function AdminTenantsPage() {
     setForm({
       name: tenant.name,
       email: tenant.email,
+      outbound_email: tenant.outbound_email || "",
       theme_color: tenant.theme_color || "#114e9e",
       plan: tenant.plan,
       subscription_start: toDateInputValue(tenant.subscription_start),
@@ -98,15 +112,41 @@ export default function AdminTenantsPage() {
     setShowModal(true);
   };
 
+  const handleResendInvite = async (tenant) => {
+    if (
+      !window.confirm(
+        `Send a new registration link to ${tenant.email}? Any previous invite links will stop working.`
+      )
+    ) {
+      return;
+    }
+    setResendingId(tenant.id);
+    setMsg("");
+    try {
+      const res = await API.post(`/tenants/${tenant.id}/resend-invite`);
+      trackEvent(Events.TENANT_INVITE_RESENT, { tenant_id: tenant.id });
+      let text = res.data?.message || "Setup email sent.";
+      if (res.data?.setup_url) {
+        text += ` Dev link: ${res.data.setup_url}`;
+      }
+      setMsg(text);
+    } catch (err) {
+      setMsg(err.response?.data?.error || "Failed to resend setup email");
+    } finally {
+      setResendingId(null);
+    }
+  };
+
   const handleDelete = async (tenantId) => {
     if (!window.confirm("Are you sure you want to delete this tenant?")) return;
     try {
-      await API.delete(`/tenants/${tenantId}`);
-      setMsg("Tenant deleted successfully");
+      const res = await API.delete(`/tenants/${tenantId}`);
+      trackEvent(Events.TENANT_DELETED, { tenant_id: tenantId });
+      setMsg(res.data?.message || "Tenant deactivated successfully");
       fetchTenants();
     } catch (err) {
       console.error(err);
-      setMsg("Failed to delete tenant");
+      setMsg(err.response?.data?.error || "Failed to delete tenant");
     }
   };
 
@@ -169,12 +209,29 @@ export default function AdminTenantsPage() {
                         )}
                       </td>
                       <td>
-                        <span className={`badge ${t.status === 'active' ? 'bg-success' : 'bg-secondary'}`}>
+                        <span className={`badge ${
+                          t.status === 'active' ? 'bg-success'
+                          : t.status === 'pending_setup' ? 'bg-warning text-dark'
+                          : 'bg-secondary'
+                        }`}>
                           {t.status}
                         </span>
                       </td>
                       <td>{new Date(t.created_at).toLocaleDateString()}</td>
-                      <td>
+                      <td className="text-nowrap">
+                        {t.setup_pending && (
+                          <Button
+                            size="sm"
+                            variant="outline-info"
+                            className="me-2 rounded-pill px-3 d-inline-flex align-items-center gap-1"
+                            disabled={resendingId === t.id}
+                            onClick={() => handleResendInvite(t)}
+                            title="Resend account setup email"
+                          >
+                            <Mail size={14} />
+                            {resendingId === t.id ? "Sending…" : "Resend link"}
+                          </Button>
+                        )}
                         <Button size="sm" variant="outline-warning" className="me-2 rounded-pill px-3" onClick={() => handleEdit(t)}>Edit</Button>
                         <Button size="sm" variant="outline-danger" className="rounded-pill px-3" onClick={() => handleDelete(t.id)}>Delete</Button>
                       </td>
@@ -202,6 +259,20 @@ export default function AdminTenantsPage() {
             <Form.Group className="mb-3">
               <Form.Label className="fw-semibold small">Email</Form.Label>
               <Form.Control type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold small">
+                Challan sender email <span className="text-muted fw-normal">(fixed for customer emails)</span>
+              </Form.Label>
+              <Form.Control
+                type="email"
+                placeholder="Defaults to platform MAIL_USERNAME if empty"
+                value={form.outbound_email}
+                onChange={(e) => setForm({ ...form, outbound_email: e.target.value })}
+              />
+              <Form.Text className="text-muted">
+                Tenants cannot change this address; they only manage display names shown to customers.
+              </Form.Text>
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label className="fw-semibold small">Plan</Form.Label>

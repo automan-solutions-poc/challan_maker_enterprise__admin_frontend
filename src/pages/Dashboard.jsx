@@ -1,11 +1,39 @@
 import React, { useEffect, useState } from "react";
 import { Row, Col, Card, Alert, Table } from "react-bootstrap";
 import { Building2, Users, CreditCard } from "lucide-react";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 import api from "../api/adminAPI";
 import Loader from "../components/Loader";
 
+const PIE_COLORS = ["#22c55e", "#f59e0b", "#3b82f6", "#ef4444", "#a855f7"];
+const BAR_COLOR = "#6366f1";
+
+const chartTooltipStyle = {
+  backgroundColor: "rgba(15, 23, 42, 0.95)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 8,
+  color: "#f8fafc",
+};
+
 export default function Dashboard() {
   const [stats, setStats] = useState({ tenants: 0, users: 0, subscriptions: 0 });
+  const [charts, setCharts] = useState({
+    tenant_status_breakdown: [],
+    tenants_by_plan: [],
+    challans_by_month: [],
+  });
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -28,6 +56,13 @@ export default function Dashboard() {
         users: data.users || 0,
         subscriptions: data.subscriptions || 0,
       });
+      setCharts(
+        data.charts || {
+          tenant_status_breakdown: [],
+          tenants_by_plan: [],
+          challans_by_month: [],
+        }
+      );
       setLogs(data.logs || []);
     } catch (err) {
       console.error("Dashboard error:", err);
@@ -38,6 +73,12 @@ export default function Dashboard() {
   };
 
   if (loading) return <Loader text="Loading Dashboard..." />;
+
+  const overviewBar = [
+    { name: "Tenants", count: stats.tenants },
+    { name: "Users", count: stats.users },
+    { name: "Subscriptions", count: stats.subscriptions },
+  ];
 
   const statCards = [
     {
@@ -75,20 +116,20 @@ export default function Dashboard() {
         </Alert>
       )}
 
-      <Row className="g-4 mb-5">
+      <Row className="g-4 mb-4">
         {statCards.map((card, idx) => (
           <Col md={4} key={idx}>
             <Card className="h-100 p-4 border-0 position-relative overflow-hidden">
               <div
                 className="position-absolute"
                 style={{
-                  top: '-20px',
-                  right: '-20px',
-                  width: '100px',
-                  height: '100px',
+                  top: "-20px",
+                  right: "-20px",
+                  width: "100px",
+                  height: "100px",
                   background: card.gradient,
-                  opacity: '0.1',
-                  borderRadius: '50%',
+                  opacity: "0.1",
+                  borderRadius: "50%",
                 }}
               />
               <div className="d-flex align-items-center mb-3">
@@ -96,25 +137,122 @@ export default function Dashboard() {
                   className="rounded-4 p-3 me-3 d-flex align-items-center justify-content-center"
                   style={{
                     background: card.gradient,
-                    color: 'white',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                    color: "white",
+                    boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
                   }}
                 >
                   {card.icon}
                 </div>
-                <div>
-                  <h6 className="text-muted fw-bold mb-0" style={{ fontSize: '0.8rem', letterSpacing: '0.02rem' }}>
-                    {card.title.toUpperCase()}
-                  </h6>
-                </div>
+                <h6
+                  className="text-muted fw-bold mb-0"
+                  style={{ fontSize: "0.8rem", letterSpacing: "0.02rem" }}
+                >
+                  {card.title.toUpperCase()}
+                </h6>
               </div>
               <div className="display-5 fw-bold">{card.value}</div>
-              <div className="mt-2">
-                <small className="text-success fw-semibold">Updated just now</small>
-              </div>
             </Card>
           </Col>
         ))}
+      </Row>
+
+      <Row className="g-4 mb-4">
+        <Col lg={4}>
+          <Card className="border-0 shadow-sm p-4 h-100">
+            <h5 className="fw-bold mb-1">Platform overview</h5>
+            <p className="text-muted small mb-4">Key counts</p>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={overviewBar} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                <XAxis type="number" allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "#94a3b8", fontSize: 12 }} width={90} />
+                <Tooltip contentStyle={chartTooltipStyle} />
+                <Bar dataKey="count" fill={BAR_COLOR} radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
+
+        <Col lg={4}>
+          <Card className="border-0 shadow-sm p-4 h-100">
+            <h5 className="fw-bold mb-1">Tenants by status</h5>
+            <p className="text-muted small mb-3">Active, pending, inactive</p>
+            {(charts.tenant_status_breakdown || []).length === 0 ? (
+              <p className="text-muted">No tenant data.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={charts.tenant_status_breakdown}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
+                    labelLine={false}
+                  >
+                    {charts.tenant_status_breakdown.map((entry, index) => (
+                      <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={chartTooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </Card>
+        </Col>
+
+        <Col lg={4}>
+          <Card className="border-0 shadow-sm p-4 h-100">
+            <h5 className="fw-bold mb-1">Tenants by plan</h5>
+            <p className="text-muted small mb-3">Free, Basic, Premium</p>
+            {(charts.tenants_by_plan || []).length === 0 ? (
+              <p className="text-muted">No plan data.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={charts.tenants_by_plan}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={80}
+                    paddingAngle={2}
+                  >
+                    {charts.tenants_by_plan.map((entry, index) => (
+                      <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={chartTooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      <Row className="g-4 mb-4">
+        <Col>
+          <Card className="border-0 shadow-sm p-4">
+            <h5 className="fw-bold mb-1">Challans platform-wide</h5>
+            <p className="text-muted small mb-4">Last 6 months</p>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={charts.challans_by_month || []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
+                <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 12 }} />
+                <Tooltip contentStyle={chartTooltipStyle} />
+                <Bar dataKey="count" name="Challans" fill="#22c55e" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </Col>
       </Row>
 
       <Card className="border-0 shadow-sm">

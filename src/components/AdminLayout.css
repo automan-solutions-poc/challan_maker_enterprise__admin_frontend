@@ -65,7 +65,7 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.admin-nav { padding: 1rem; flex-grow: 1; overflow-y: auto; }
+.admin-nav { padding: 1rem; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; flex-wrap: nowrap; }
 
 .nav-section-title {
   font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
@@ -111,9 +111,20 @@
   transition: all var(--transition-speed) ease-in-out;
 }
 
+.sidebar-backdrop { display: none; }
+
 .sidebar-toggle { display: none; }
 
 @media (max-width: 768px) {
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+  }
+
   .admin-sidebar {
     position: fixed; left: -260px; top: 0; height: 100%;
   }

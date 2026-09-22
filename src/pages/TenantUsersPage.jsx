@@ -3,6 +3,7 @@ import API from "../api/adminAPI";
 import { Table, Button, Modal, Form, Alert, Card } from "react-bootstrap";
 import { Plus, Users, Trash2 } from "lucide-react";
 import Loader from "../components/Loader";
+import { trackEvent, Events } from "../analytics";
 
 export default function TenantUsersPage() {
   const [tenants, setTenants] = useState([]);
@@ -45,6 +46,7 @@ export default function TenantUsersPage() {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
       await API.delete(`/tenant_users/${tenantId}/${userId}`);
+      trackEvent(Events.ADMIN_TENANT_USER_DELETED, { tenant_id: tenantId, user_id: userId });
       setMsg("User deleted successfully");
       fetchUsers();
     } catch (err) {
@@ -56,6 +58,7 @@ export default function TenantUsersPage() {
     e.preventDefault();
     try {
       const res = await API.post(`/tenant_users/${tenantId}`, form);
+      trackEvent(Events.ADMIN_TENANT_USER_CREATED, { tenant_id: tenantId, role: form.role });
       setMsg(res.data.message);
       setShowModal(false);
       setForm({ name: "", email: "", password: "", role: "tenant_staff" });

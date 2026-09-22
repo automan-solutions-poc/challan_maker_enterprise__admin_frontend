@@ -3,6 +3,7 @@ import API from "../api/adminAPI";
 import { Table, Button, Modal, Form, Alert, Card } from "react-bootstrap";
 import { Plus, CreditCard } from "lucide-react";
 import Loader from "../components/Loader";
+import { trackEvent, Events } from "../analytics";
 
 export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -36,6 +37,10 @@ export default function SubscriptionsPage() {
     e.preventDefault();
     try {
       const res = await API.post("/subscriptions", form);
+      trackEvent(Events.SUBSCRIPTION_CREATED, {
+        tenant_id: form.tenant_id,
+        plan_name: form.plan_name,
+      });
       setMsg(res.data.message);
       setShowModal(false);
       setForm({ tenant_id: "", plan_name: "", price: "", start_date: "", end_date: "" });
