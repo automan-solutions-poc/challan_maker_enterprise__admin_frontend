@@ -1,53 +1,152 @@
-import React from "react";
-import { Container, Row, Col, Nav, Button } from "react-bootstrap";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import API from "../api/adminAPI";
+import { Container, Nav, Button } from "react-bootstrap";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  CreditCard,
+  LogOut,
+  Menu,
+  Sun,
+  Moon,
+  Shield,
+  PanelLeftClose,
+  PanelLeftOpen,
+  FileText,
+} from "lucide-react";
+import { useTheme } from "../ThemeContext";
+import "./AdminLayout.css";
+import { resetAnalytics, trackEvent, Events } from "../analytics";
 
 export default function AdminLayout() {
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const admin = JSON.parse(localStorage.getItem("admin_user") || "null");
+  const [pendingSignups, setPendingSignups] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await API.get("/tenants/pending-signups");
+        if (!cancelled) setPendingSignups(res.data?.count || 0);
+      } catch {
+        if (!cancelled) setPendingSignups(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const logout = () => {
+    trackEvent(Events.LOGOUT, { role: admin?.role || "admin" });
+    resetAnalytics();
     localStorage.removeItem("admin_token");
     localStorage.removeItem("admin_user");
     navigate("/login");
   };
 
+  const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
+
   return (
-    <Container fluid className="vh-100 bg-light">
-      <Row className="h-100">
-        {/* Sidebar */}
-        <Col md={2} className="bg-dark text-white p-0 d-flex flex-column">
-          <div className="p-3 border-bottom text-center fw-bold fs-5">
-            {admin?.full_name || "Admin Panel"}
+    <div className="admin-layout">
+      <button className="sidebar-toggle" onClick={toggleSidebar}>
+        <Menu size={20} />
+      </button>
+
+      {isSidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
+
+      <aside
+        className={`admin-sidebar ${isSidebarOpen ? "is-open" : ""} ${isSidebarCollapsed ? "is-collapsed" : ""}`}
+      >
+        <div className="d-flex flex-column h-100">
+          <div className="admin-header px-4 py-4 d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center gap-3 overflow-hidden">
+              <div className="admin-logo d-flex align-items-center justify-content-center shadow-sm flex-shrink-0">
+                <Shield size={20} />
+              </div>
+              <div className="overflow-hidden sidebar-text">
+                <h5 className="admin-name mb-0 fw-bold">Automan</h5>
+                <small className="text-muted text-uppercase tracking-wider" style={{ fontSize: '9px', fontWeight: '700' }}>Admin Panel</small>
+              </div>
+            </div>
+            <Button
+              variant="link"
+              className="text-muted p-0 d-none d-md-flex align-items-center justify-content-center sidebar-collapse-toggle"
+              onClick={() => setSidebarCollapsed(!isSidebarCollapsed)}
+              title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {isSidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+            </Button>
           </div>
 
-          <Nav className="flex-column flex-grow-1 p-2">
-            <Nav.Link as={NavLink} to="/admin/dashboard" className="text-white">
-              📊 Dashboard
+          <Nav className="admin-nav flex-column">
+            <Nav.Link as={NavLink} to="/admin/dashboard" className="admin-link" onClick={() => setSidebarOpen(false)}>
+              <LayoutDashboard size={18} className="sidebar-icon" /><span className="sidebar-text">Dashboard</span>
             </Nav.Link>
-            <Nav.Link as={NavLink} to="/admin/tenants" className="text-white">
-              🏢 Tenants
+
+            <div className="nav-section-title mt-3 mb-1 sidebar-text">MANAGEMENT</div>
+
+            <Nav.Link as={NavLink} to="/admin/tenants" className="admin-link" onClick={() => setSidebarOpen(false)}>
+              <Building2 size={18} className="sidebar-icon" />
+              <span className="sidebar-text d-flex align-items-center gap-2">
+                Tenants
+                {pendingSignups > 0 && (
+                  <span className="badge bg-danger rounded-pill" style={{ fontSize: "10px" }}>
+                    {pendingSignups}
+                  </span>
+                )}
+              </span>
             </Nav.Link>
-            <Nav.Link as={NavLink} to="/admin/tenant-users" className="text-white">
-              👥 Tenant Users
+            <Nav.Link as={NavLink} to="/admin/tenant-users" className="admin-link" onClick={() => setSidebarOpen(false)}>
+              <Users size={18} className="sidebar-icon" /><span className="sidebar-text">Tenant Users</span>
             </Nav.Link>
-            <Nav.Link as={NavLink} to="/admin/subscriptions" className="text-white">
-              💳 Subscriptions
+            <Nav.Link as={NavLink} to="/admin/subscriptions" className="admin-link" onClick={() => setSidebarOpen(false)}>
+              <CreditCard size={18} className="sidebar-icon" /><span className="sidebar-text">Subscriptions</span>
+            </Nav.Link>
+            <Nav.Link as={NavLink} to="/admin/challans" className="admin-link" onClick={() => setSidebarOpen(false)}>
+              <FileText size={18} className="sidebar-icon" /><span className="sidebar-text">Challans</span>
             </Nav.Link>
           </Nav>
 
-          <div className="p-3 border-top">
-            <Button variant="danger" className="w-100" onClick={logout}>
-              Logout
+          <div className="admin-footer p-3">
+            <div className="mb-3 px-2">
+              <div className="d-flex align-items-center gap-2 mb-3">
+                 <div className="bg-primary rounded-circle flex-shrink-0" style={{ width: '8px', height: '8px' }}></div>
+                 <small className="text-muted fw-semibold sidebar-text">Logged in as {admin?.full_name || 'Admin'}</small>
+              </div>
+              <Button
+                variant="link"
+                className="theme-toggle-btn w-100 d-flex align-items-center justify-content-start p-2 text-decoration-none"
+                onClick={toggleTheme}
+              >
+                {theme === "light" ? (
+                  <><Moon size={18} className="sidebar-icon" /><span className="sidebar-text">Dark Mode</span></>
+                ) : (
+                  <><Sun size={18} className="sidebar-icon" /><span className="sidebar-text">Light Mode</span></>
+                )}
+              </Button>
+            </div>
+            <Button
+              variant="outline-danger"
+              className="logout-btn w-100 d-flex align-items-center justify-content-center py-2"
+              onClick={logout}
+              style={{ borderRadius: '12px' }}
+            >
+              <LogOut size={16} className="sidebar-icon" /><span className="sidebar-text">Logout</span>
             </Button>
           </div>
-        </Col>
+        </div>
+      </aside>
 
-        {/* Main Content */}
-        <Col md={10} className="p-4 overflow-auto">
+      <main className={`admin-content ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+        <Container fluid className="p-4">
           <Outlet />
-        </Col>
-      </Row>
-    </Container>
+        </Container>
+      </main>
+    </div>
   );
 }
