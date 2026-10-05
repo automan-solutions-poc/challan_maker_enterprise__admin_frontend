@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Row, Col, Card, Alert, Table } from "react-bootstrap";
 import { Building2, Users, CreditCard } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   ResponsiveContainer,
   PieChart,
@@ -28,7 +29,7 @@ const chartTooltipStyle = {
 };
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ tenants: 0, users: 0, subscriptions: 0 });
+  const [stats, setStats] = useState({ tenants: 0, users: 0, subscriptions: 0, pending_signups: 0 });
   const [charts, setCharts] = useState({
     tenant_status_breakdown: [],
     tenants_by_plan: [],
@@ -46,15 +47,13 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError("");
-      const token = localStorage.getItem("admin_token");
-      const response = await api.get("/dashboard/summary", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get("/dashboard/summary");
       const data = response.data;
       setStats({
         tenants: data.tenants || 0,
         users: data.users || 0,
         subscriptions: data.subscriptions || 0,
+        pending_signups: data.pending_signups || 0,
       });
       setCharts(
         data.charts || {
@@ -109,6 +108,14 @@ export default function Dashboard() {
           <p className="text-muted small">Admin overview at a glance.</p>
         </div>
       </div>
+
+      {stats.pending_signups > 0 && (
+        <Alert variant="warning" className="border-0 shadow-sm mb-4">
+          <strong>{stats.pending_signups}</strong> tenant signup
+          {stats.pending_signups === 1 ? "" : "s"} waiting for approval.{" "}
+          <Link to="/admin/tenants" className="alert-link">Review in Tenants</Link>
+        </Alert>
+      )}
 
       {error && (
         <Alert variant="danger" className="border-0 shadow-sm mb-4">

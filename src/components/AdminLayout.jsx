@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import API from "../api/adminAPI";
 import { Container, Nav, Button } from "react-bootstrap";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import {
@@ -25,6 +26,20 @@ export default function AdminLayout() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const admin = JSON.parse(localStorage.getItem("admin_user") || "null");
+  const [pendingSignups, setPendingSignups] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await API.get("/tenants/pending-signups");
+        if (!cancelled) setPendingSignups(res.data?.count || 0);
+      } catch {
+        if (!cancelled) setPendingSignups(0);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const logout = () => {
     trackEvent(Events.LOGOUT, { role: admin?.role || "admin" });
@@ -76,7 +91,15 @@ export default function AdminLayout() {
             <div className="nav-section-title mt-3 mb-1 sidebar-text">MANAGEMENT</div>
 
             <Nav.Link as={NavLink} to="/admin/tenants" className="admin-link" onClick={() => setSidebarOpen(false)}>
-              <Building2 size={18} className="sidebar-icon" /><span className="sidebar-text">Tenants</span>
+              <Building2 size={18} className="sidebar-icon" />
+              <span className="sidebar-text d-flex align-items-center gap-2">
+                Tenants
+                {pendingSignups > 0 && (
+                  <span className="badge bg-danger rounded-pill" style={{ fontSize: "10px" }}>
+                    {pendingSignups}
+                  </span>
+                )}
+              </span>
             </Nav.Link>
             <Nav.Link as={NavLink} to="/admin/tenant-users" className="admin-link" onClick={() => setSidebarOpen(false)}>
               <Users size={18} className="sidebar-icon" /><span className="sidebar-text">Tenant Users</span>

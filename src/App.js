@@ -8,6 +8,7 @@ import SubscriptionsPage from "./pages/SubscriptionsPage";
 import AdminChallansPage from "./pages/AdminChallansPage";
 import AdminLayout from "./components/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
   return (
@@ -30,7 +31,7 @@ export default function App() {
         <Route path="challans" element={<AdminChallansPage />} />
       </Route>
 
-      <Route path="*" element={<LoginPage />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

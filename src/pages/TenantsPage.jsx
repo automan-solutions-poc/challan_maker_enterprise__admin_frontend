@@ -17,13 +17,14 @@ export default function AdminTenantsPage() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [resendingId, setResendingId] = useState(null);
+  const [approvingId, setApprovingId] = useState(null);
 
   const emptyForm = {
     name: "",
     email: "",
     outbound_email: "",
     theme_color: "#114e9e",
-    plan: "Free",
+    plan: "MVP",
     subscription_start: "",
     subscription_end: "",
     status: "active",
@@ -137,6 +138,22 @@ export default function AdminTenantsPage() {
     }
   };
 
+  const handleApproveSignup = async (tenant) => {
+    if (!window.confirm(`Approve signup for ${tenant.name} (${tenant.email})?`)) return;
+    setApprovingId(tenant.id);
+    setMsg("");
+    try {
+      const res = await API.post(`/tenants/${tenant.id}/approve`);
+      trackEvent(Events.TENANT_UPDATED, { tenant_id: tenant.id, action: "approve_signup" });
+      setMsg(res.data?.message || "Tenant approved.");
+      fetchTenants();
+    } catch (err) {
+      setMsg(err.response?.data?.error || "Failed to approve tenant");
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   const handleDelete = async (tenantId) => {
     if (!window.confirm("Are you sure you want to delete this tenant?")) return;
     try {
@@ -203,7 +220,7 @@ export default function AdminTenantsPage() {
                         {t.max_limit == null ? (
                           <span className="text-muted">—</span>
                         ) : t.max_limit === -1 ? (
-                          <span className="text-success fw-semibold">Unlimited</span>
+                          <span className="text-success fw-semibold">{t.pdf_count ?? 0} / Unlimited</span>
                         ) : (
                           <span>{t.pdf_count} / {t.max_limit}</span>
                         )}
@@ -212,13 +229,25 @@ export default function AdminTenantsPage() {
                         <span className={`badge ${
                           t.status === 'active' ? 'bg-success'
                           : t.status === 'pending_setup' ? 'bg-warning text-dark'
+                          : t.status === 'pending_approval' ? 'bg-info text-dark'
                           : 'bg-secondary'
                         }`}>
-                          {t.status}
+                          {t.status === 'pending_approval' ? 'pending approval' : t.status}
                         </span>
                       </td>
                       <td>{new Date(t.created_at).toLocaleDateString()}</td>
                       <td className="text-nowrap">
+                        {t.status === "pending_approval" && (
+                          <Button
+                            size="sm"
+                            variant="success"
+                            className="me-2 rounded-pill px-3"
+                            disabled={approvingId === t.id}
+                            onClick={() => handleApproveSignup(t)}
+                          >
+                            {approvingId === t.id ? "Approving…" : "Approve"}
+                          </Button>
+                        )}
                         {t.setup_pending && (
                           <Button
                             size="sm"
@@ -277,9 +306,12 @@ export default function AdminTenantsPage() {
             <Form.Group className="mb-3">
               <Form.Label className="fw-semibold small">Plan</Form.Label>
               <Form.Select value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })}>
-                <option>Free</option>
-                <option>Basic</option>
-                <option>Premium</option>
+                <option value="MVP">MVP — 20 PDFs/mo, 2 users</option>
+                <option value="Free">Free (legacy)</option>
+                <option value="Basic">Basic</option>
+                <option value="Premium">Premium — unlimited PDFs</option>
+                <option value="Professional">Professional</option>
+                <option value="Enterprise">Enterprise</option>
               </Form.Select>
             </Form.Group>
             <Form.Group className="mb-3">
@@ -287,6 +319,8 @@ export default function AdminTenantsPage() {
               <Form.Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
+                <option value="pending_approval">Pending approval</option>
+                <option value="pending_setup">Pending setup</option>
               </Form.Select>
             </Form.Group>
             <Form.Group className="mb-3">

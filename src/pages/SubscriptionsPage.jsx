@@ -8,10 +8,18 @@ import { trackEvent, Events } from "../analytics";
 export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const PLAN_OPTIONS = [
+    { value: "MVP", label: "MVP — 20 PDFs/month, 2 users (1 admin + 1 staff)", price: "0" },
+    { value: "Basic", label: "Basic — 100 PDFs/month", price: "" },
+    { value: "Professional", label: "Professional — unlimited PDFs", price: "" },
+    { value: "Premium", label: "Premium — unlimited PDFs", price: "" },
+    { value: "Enterprise", label: "Enterprise", price: "" },
+  ];
+
   const [form, setForm] = useState({
     tenant_id: "",
-    plan_name: "",
-    price: "",
+    plan_name: "MVP",
+    price: "0",
     start_date: "",
     end_date: "",
   });
@@ -43,7 +51,7 @@ export default function SubscriptionsPage() {
       });
       setMsg(res.data.message);
       setShowModal(false);
-      setForm({ tenant_id: "", plan_name: "", price: "", start_date: "", end_date: "" });
+      setForm({ tenant_id: "", plan_name: "MVP", price: "0", start_date: "", end_date: "" });
       fetchSubscriptions();
     } catch (err) {
       setMsg(err.response?.data?.error || "Failed to create subscription");
@@ -124,8 +132,23 @@ export default function SubscriptionsPage() {
               <Form.Control value={form.tenant_id} onChange={(e) => setForm({ ...form, tenant_id: e.target.value })} required />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold small">Plan Name</Form.Label>
-              <Form.Control value={form.plan_name} onChange={(e) => setForm({ ...form, plan_name: e.target.value })} required />
+              <Form.Label className="fw-semibold small">Plan</Form.Label>
+              <Form.Select
+                value={form.plan_name}
+                onChange={(e) => {
+                  const opt = PLAN_OPTIONS.find((p) => p.value === e.target.value);
+                  setForm({
+                    ...form,
+                    plan_name: e.target.value,
+                    price: opt?.price !== undefined && opt.price !== "" ? opt.price : form.price,
+                  });
+                }}
+                required
+              >
+                {PLAN_OPTIONS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </Form.Select>
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label className="fw-semibold small">Price</Form.Label>
