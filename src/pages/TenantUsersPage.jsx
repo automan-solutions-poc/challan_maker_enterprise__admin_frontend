@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import API from "../api/adminAPI";
 import { Table, Button, Modal, Form, Spinner, Alert } from "react-bootstrap";
 
